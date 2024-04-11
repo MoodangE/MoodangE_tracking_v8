@@ -339,6 +339,21 @@ class Annotator:
         """Save the annotated image to 'filename'."""
         cv2.imwrite(filename, np.asarray(self.im))
 
+    def get_bbox_dimension(self, bbox=None):
+        """
+        Calculate the area of a bounding box.
+
+        Args:
+            bbox (tuple): Bounding box coordinates in the format (x_min, y_min, x_max, y_max).
+
+        Returns:
+            angle (degree): Degree value of angle between three points
+        """
+        x_min, y_min, x_max, y_max = bbox
+        width = x_max - x_min
+        height = y_max - y_min
+        return width, height, width * height
+
     def draw_region(self, reg_pts=None, color=(0, 255, 0), thickness=5):
         """
         Draw region line.
@@ -364,13 +379,22 @@ class Annotator:
         cv2.circle(self.im, (int(track[-1][0]), int(track[-1][1])), track_thickness * 2, color, -1)
 
     def queue_counts_display(self, label, points=None, region_color=(255, 255, 255), txt_color=(0, 0, 0), fontsize=0.7):
-        """Displays queue counts on an image centered at the points with customizable font size and colors."""
+        """
+        Displays queue counts on an image centered at the points with customizable font size and colors.
+
+        Args:
+            label (str): queue counts label
+            points (tuple): region points for center point calculation to display text
+            region_color (RGB): queue region color
+            txt_color (RGB): text display color
+            fontsize (float): text fontsize
+        """
         x_values = [point[0] for point in points]
         y_values = [point[1] for point in points]
         center_x = sum(x_values) // len(points)
         center_y = sum(y_values) // len(points)
 
-        text_size = cv2.getTextSize(label, cv2.FONT_HERSHEY_SIMPLEX, fontScale=fontsize, thickness=self.tf)[0]
+        text_size = cv2.getTextSize(label, 0, fontScale=fontsize, thickness=self.tf)[0]
         text_width = text_size[0]
         text_height = text_size[1]
 
@@ -388,7 +412,7 @@ class Annotator:
             self.im,
             label,
             (text_x, text_y),
-            cv2.FONT_HERSHEY_SIMPLEX,
+            0,
             fontScale=fontsize,
             color=txt_color,
             thickness=self.tf,
@@ -595,30 +619,26 @@ class Annotator:
             line_color (RGB): Distance line color.
             centroid_color (RGB): Bounding box centroid color.
         """
-        (text_width_m, text_height_m), _ = cv2.getTextSize(
-            f"Distance M: {distance_m:.2f}m", cv2.FONT_HERSHEY_SIMPLEX, 0.8, 2
-        )
+        (text_width_m, text_height_m), _ = cv2.getTextSize(f"Distance M: {distance_m:.2f}m", 0, 0.8, 2)
         cv2.rectangle(self.im, (15, 25), (15 + text_width_m + 10, 25 + text_height_m + 20), (255, 255, 255), -1)
         cv2.putText(
             self.im,
             f"Distance M: {distance_m:.2f}m",
             (20, 50),
-            cv2.FONT_HERSHEY_SIMPLEX,
+            0,
             0.8,
             (0, 0, 0),
             2,
             cv2.LINE_AA,
         )
 
-        (text_width_mm, text_height_mm), _ = cv2.getTextSize(
-            f"Distance MM: {distance_mm:.2f}mm", cv2.FONT_HERSHEY_SIMPLEX, 0.8, 2
-        )
+        (text_width_mm, text_height_mm), _ = cv2.getTextSize(f"Distance MM: {distance_mm:.2f}mm", 0, 0.8, 2)
         cv2.rectangle(self.im, (15, 75), (15 + text_width_mm + 10, 75 + text_height_mm + 20), (255, 255, 255), -1)
         cv2.putText(
             self.im,
             f"Distance MM: {distance_mm:.2f}mm",
             (20, 100),
-            cv2.FONT_HERSHEY_SIMPLEX,
+            0,
             0.8,
             (0, 0, 0),
             2,
@@ -651,8 +671,8 @@ class Annotator:
 @plt_settings()
 def plot_labels(boxes, cls, names=(), save_dir=Path(""), on_plot=None):
     """Plot training labels including class histograms and box statistics."""
-    import pandas as pd
-    import seaborn as sn
+    import pandas  # scope for faster 'import ultralytics'
+    import seaborn  # scope for faster 'import ultralytics'
 
     # Filter matplotlib>=3.7.2 warning and Seaborn use_inf and is_categorical FutureWarnings
     warnings.filterwarnings("ignore", category=UserWarning, message="The figure layout has changed to tight")
@@ -662,10 +682,10 @@ def plot_labels(boxes, cls, names=(), save_dir=Path(""), on_plot=None):
     LOGGER.info(f"Plotting labels to {save_dir / 'labels.jpg'}... ")
     nc = int(cls.max() + 1)  # number of classes
     boxes = boxes[:1000000]  # limit to 1M boxes
-    x = pd.DataFrame(boxes, columns=["x", "y", "width", "height"])
+    x = pandas.DataFrame(boxes, columns=["x", "y", "width", "height"])
 
     # Seaborn correlogram
-    sn.pairplot(x, corner=True, diag_kind="auto", kind="hist", diag_kws=dict(bins=50), plot_kws=dict(pmax=0.9))
+    seaborn.pairplot(x, corner=True, diag_kind="auto", kind="hist", diag_kws=dict(bins=50), plot_kws=dict(pmax=0.9))
     plt.savefig(save_dir / "labels_correlogram.jpg", dpi=200)
     plt.close()
 
@@ -680,8 +700,8 @@ def plot_labels(boxes, cls, names=(), save_dir=Path(""), on_plot=None):
         ax[0].set_xticklabels(list(names.values()), rotation=90, fontsize=10)
     else:
         ax[0].set_xlabel("classes")
-    sn.histplot(x, x="x", y="y", ax=ax[2], bins=50, pmax=0.9)
-    sn.histplot(x, x="width", y="height", ax=ax[3], bins=50, pmax=0.9)
+    seaborn.histplot(x, x="x", y="y", ax=ax[2], bins=50, pmax=0.9)
+    seaborn.histplot(x, x="width", y="height", ax=ax[3], bins=50, pmax=0.9)
 
     # Rectangles
     boxes[:, 0:2] = 0.5  # center
@@ -818,16 +838,16 @@ def plot_images(
             if len(bboxes):
                 boxes = bboxes[idx]
                 conf = confs[idx] if confs is not None else None  # check for confidence presence (label vs pred)
-                is_obb = boxes.shape[-1] == 5  # xywhr
-                boxes = ops.xywhr2xyxyxyxy(boxes) if is_obb else ops.xywh2xyxy(boxes)
                 if len(boxes):
                     if boxes[:, :4].max() <= 1.1:  # if normalized with tolerance 0.1
-                        boxes[..., 0::2] *= w  # scale to pixels
-                        boxes[..., 1::2] *= h
+                        boxes[..., [0, 2]] *= w  # scale to pixels
+                        boxes[..., [1, 3]] *= h
                     elif scale < 1:  # absolute coords need scale if image scales
                         boxes[..., :4] *= scale
-                boxes[..., 0::2] += x
-                boxes[..., 1::2] += y
+                boxes[..., 0] += x
+                boxes[..., 1] += y
+                is_obb = boxes.shape[-1] == 5  # xywhr
+                boxes = ops.xywhr2xyxyxyxy(boxes) if is_obb else ops.xywh2xyxy(boxes)
                 for j, box in enumerate(boxes.astype(np.int64).tolist()):
                     c = classes[j]
                     color = colors(c)
@@ -913,7 +933,7 @@ def plot_results(file="path/to/results.csv", dir="", segment=False, pose=False, 
         plot_results('path/to/results.csv', segment=True)
         ```
     """
-    import pandas as pd
+    import pandas as pd  # scope for faster 'import ultralytics'
     from scipy.ndimage import gaussian_filter1d
 
     save_dir = Path(file).parent if file else Path(dir)
@@ -999,7 +1019,7 @@ def plot_tune_results(csv_file="tune_results.csv"):
         >>> plot_tune_results('path/to/tune_results.csv')
     """
 
-    import pandas as pd
+    import pandas as pd  # scope for faster 'import ultralytics'
     from scipy.ndimage import gaussian_filter1d
 
     # Scatter plots for each hyperparameter
