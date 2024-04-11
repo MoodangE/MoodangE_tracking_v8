@@ -5,5 +5,7 @@
 /.idea/modules.xml
 /.idea/MoodangE_tracking_v8.iml
 /.idea/vcs.xml
+/.idea/aws.xml
 
 .DS_Store
+/inference_person
